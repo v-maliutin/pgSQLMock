@@ -1,9 +1,10 @@
 \unset ECHO
-\i test/setup.sql
--- \i sql/pgtap.sql
+\pset format unaligned
+\pset tuples_only true
+
+begin;
 
 SELECT plan(21);
---SELECT * FROM no_plan();
 
 -- This will be rolled back. :-)
 SET track_functions = 'all';

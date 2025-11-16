@@ -1,12 +1,10 @@
 \unset ECHO
-\i test/setup.sql
--- \i sql/pgtap.sql
+\pset format unaligned
+\pset tuples_only true
+
+begin;
 
 SELECT plan(3);
---SELECT * FROM no_plan();
-
--- This will be rolled back. :-)
---SET track_functions = 'all';
 
 -- This will be rolled back. :-)
 SET client_min_messages = warning;

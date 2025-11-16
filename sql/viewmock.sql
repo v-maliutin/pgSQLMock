@@ -1,6 +1,14 @@
 \unset ECHO
-\i test/setup.sql
--- \i sql/pgtap.sql
+\pset format unaligned
+\pset tuples_only true
+
+create extension if not exists pgtap;
+
+create extension if not exists pgfake;
+
+create schema if not exists tests;
+
+begin;
 
 SELECT plan(1);
 
@@ -8,7 +16,7 @@ create or replace view public.some_view
 as
 select * from (values(1, 'a'), (2, 'b'), (3, 'c')) as t(id, f);
 
-create or replace function test_view_mocking() RETURNS SETOF TEXT AS $$
+create or replace function tests.test_view_mocking() RETURNS SETOF TEXT AS $$
 BEGIN
 	PREPARE some_view_should_be AS select * from (values(1, 'x'), (2, 'y'), (3, 'z')) as t(id, f) ORDER BY id;
 	perform mock_view('public', 'some_view',
@@ -22,8 +30,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT * FROM test_view_mocking();
+select * from tests.test_view_mocking();
 
--- Finish the tests and clean up.
+---- Finish the tests and clean up.
 SELECT * FROM finish();
 ROLLBACK;

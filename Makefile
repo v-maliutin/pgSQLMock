@@ -4,7 +4,7 @@
 #MODULES = pgfake
 EXTENSION = pgfake        # the extersion's name
 DATA = pgfake--0.0.1.sql  # script file to install
-#REGRESS = pgfake_test     # the test script file
+REGRESS = viewmock funcmock faketable    # the test script file
 
 # for posgres build
 PG_CONFIG = pg_config
