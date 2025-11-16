@@ -1,2 +1,2 @@
 # pgFake
-Faking and mocking functionality extending pgTap (Unit testing for PostgreSQL)
+Faking and mocking functionality extending [pgTap](https://github.com/theory/pgtap) (Unit testing for PostgreSQL)
