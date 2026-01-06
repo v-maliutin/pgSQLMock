@@ -1,5 +1,5 @@
 --complain if script is sourced in psql, rather than via CREATE EXTENSION
-\echo Use "CREATE EXTENSION pgmock" to load this file. \quit
+\echo Use "CREATE EXTENSION pgsqlmock" to load this file. \quit
 
 create function get_routine_signature(
 	_routine_schema name

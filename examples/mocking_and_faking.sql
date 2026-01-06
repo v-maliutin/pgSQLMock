@@ -6,9 +6,9 @@ create extension pgtap schema tap;
 
 create schema if not exists faking;
 
-drop extension if exists pgfake;
+drop extension if exists pgsqlmock;
 
-create extension pgfake schema faking;
+create extension pgsqlmock schema faking;
 
 create schema if not exists pgconf;
 create schema if not exists tests;

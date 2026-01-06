@@ -4,7 +4,7 @@
 
 create extension if not exists pgtap;
 
-create extension if not exists pgfake;
+create extension if not exists pgsqlmock;
 
 create schema if not exists tests;
 

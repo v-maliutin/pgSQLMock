@@ -1,9 +1,9 @@
 #PLUGINS = get_sum
 #OBJS    = get_sum.o
 
-#MODULES = pgfake
-EXTENSION = pgfake        # the extersion's name
-DATA = pgfake--0.0.1.sql  # script file to install
+#MODULES = pgsqlmock
+EXTENSION = pgsqlmock        # the extersion's name
+DATA = pgsqlmock--1.0.0.sql  # script file to install
 REGRESS = viewmock funcmock faketable    # the test script file
 
 # for posgres build
