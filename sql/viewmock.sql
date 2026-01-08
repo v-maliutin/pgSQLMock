@@ -17,7 +17,7 @@ as
 select * from (values(1, 'a'), (2, 'b'), (3, 'c')) as t(id, f);
 
 create or replace function tests.test_view_mocking() RETURNS SETOF TEXT AS $$
-BEGIN
+BEGIN	
 	PREPARE some_view_should_be AS select * from (values(1, 'x'), (2, 'y'), (3, 'z')) as t(id, f) ORDER BY id;
 	perform mock_view('public', 'some_view',
 		_return_set_sql => 'select * from (values(1, ''x''), (2, ''y''), (3, ''z'')) as t(id, f)');

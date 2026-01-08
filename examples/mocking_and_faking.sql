@@ -1,19 +1,15 @@
 create schema if not exists tap;
 
-drop extension if exists pgtap;
+create schema if not exists pgsqlmock;
 
-create extension pgtap schema tap;
+create extension if not exists pgtap schema tap;
 
-create schema if not exists faking;
-
-drop extension if exists pgsqlmock;
-
-create extension pgsqlmock schema faking;
+create extension if not exists pgsqlmock schema pgsqlmock;
 
 create schema if not exists pgconf;
 create schema if not exists tests;
 
-set search_path to public, tap, faking, pgconf;
+set search_path to public, tap, pgsqlmock, pgconf;
 set track_functions = 'all'	;
 
 drop function if exists pgconf.get_osv_slice(int, int, int);
@@ -189,7 +185,7 @@ create or replace procedure tests.create_test_data()
 language plpgsql
 as $$
 begin
-    perform tap.fake_table(
+    perform fake_table(
         _table_ident => '{pgconf.account, pgconf.analytic, pgconf.osv, pgconf.transactions}'::text[],
         _make_table_empty => true,
 		_leave_primary_key => false,
@@ -251,11 +247,11 @@ as $$
 begin 
     -- GIVEN
     call tests.create_test_data();
-    perform tap.mock_func('pgconf', 'time_machine_now', '()'
+    perform mock_func('pgconf', 'time_machine_now', '()'
         , _return_scalar_value => '13:00'::time);
     
     -- WHEN
-    perform tap.drop_prepared_statement('{expected, returned}'::text[]);
+    perform drop_prepared_statement('{expected, returned}'::text[]);
 
     prepare expected as 
     select num::text
@@ -269,7 +265,7 @@ begin
 
     -- THEN
     return query
-    select tap.results_eq(
+    select results_eq(
         'returned',
         'expected',
         'Accounts must be sorted in depth first.'
@@ -279,11 +275,11 @@ begin
     create table pgconf.slice as 
     select * from pgconf.get_osv_slice(null, null, null);
 
-    perform tap.print_table_as_json('pgconf', 'slice');
-    perform tap.print_table_as_json('pgconf', 'account');
+    perform print_table_as_json('pgconf', 'slice');
+    perform print_table_as_json('pgconf', 'account');
 
     -- WHEN 
-    perform tap.drop_prepared_statement('{expected, returned}'::text[]);
+    perform drop_prepared_statement('{expected, returned}'::text[]);
 end;
 $$;
 
@@ -294,26 +290,26 @@ as $$
 begin 
     -- GIVEN
     call tests.create_test_data();
-    perform tap.mock_func('pgconf', 'time_machine_now', '()'
+    perform mock_func('pgconf', 'time_machine_now', '()'
         , _return_scalar_value => '15:01'::time);
 
     create table pgconf.x as select * from pgconf.time_machine_now();
-    perform tap.print_table_as_json('pgconf', 'x');
+    perform print_table_as_json('pgconf', 'x');
 
     -- WHEN    
-    perform tap.drop_prepared_statement('{returned}'::text[]);
+    perform drop_prepared_statement('{returned}'::text[]);
 
     prepare returned as
     select * from pgconf.get_osv_slice(null, null, null);
 
     -- THEN
     return query
-    select tap.is_empty(
+    select is_empty(
         'returned',
         'It is not good time to make osv report.'
     );
 
-    perform tap.drop_prepared_statement('{returned}'::text[]);
+    perform drop_prepared_statement('{returned}'::text[]);
 end;
 $$;
 
@@ -324,23 +320,23 @@ as $$
 begin 
     -- GIVEN
     call tests.create_test_data();
-    perform tap.mock_func('pgconf', 'time_machine_now', '()'
+    perform mock_func('pgconf', 'time_machine_now', '()'
         , _return_set_value => null::text, _return_scalar_value => '13:00'::time);
 
     -- WHEN    
-    perform tap.drop_prepared_statement('{returned}'::text[]);
+    perform drop_prepared_statement('{returned}'::text[]);
 
     prepare returned as
     select * from pgconf.get_osv_slice(null, null, null);
 
     -- THEN
     return query
-    select tap.isnt_empty(
+    select isnt_empty(
         'returned',
         'Time has come. We can make osv report.'
     );
 
-    perform tap.drop_prepared_statement('{expected}'::text[]);
+    perform drop_prepared_statement('{expected}'::text[]);
 end;
 $$;
 
@@ -354,11 +350,11 @@ begin
 
     -- THEN
     return query
-    select tap.call_count(6, 'pgconf'
+    select call_count(6, 'pgconf'
 		, 'get_tree_of', '{int}'::name[]);
 end;
 $$;
 
-select * from tap.runtests('tests', '^test_');
+select * from runtests('tests', '^test_');
 
-select * from tap.runtests('tests', 'test_osv_on_time');
+select * from runtests('tests', 'test_osv_on_time');

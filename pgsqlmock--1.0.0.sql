@@ -1,6 +1,82 @@
 --complain if script is sourced in psql, rather than via CREATE EXTENSION
 \echo Use "CREATE EXTENSION pgsqlmock" to load this file. \quit
 
+create or replace function _routineresult ( _routine_signature text )
+returns text as $$
+begin
+	/*
+	We need this function because without handling errors we will run into an error like
+	SQL Error [42883]: ERROR: function
+	"pg_toast.mock_func(text,text,text,text,anyelement)" dose not exist
+	It happens when we write filter 'routine_return.returns is not null' in tap_funky view.
+	Handling 'undefined_object' does not work
+	*/
+    return pg_catalog.pg_get_function_result((_routine_signature::regprocedure)::oid);
+exception when others then
+    return null;
+end;
+$$ language plpgsql stable;
+
+create or replace function _routineargsdefs ( _routine_signature text )
+returns text as $$
+begin
+	/*
+	We need this function because without handling errors we will run into an error like
+	SQL Error [42883]: ERROR: function
+	"pg_toast.mock_func(text,text,text,text,anyelement)" dose not exist
+	It happens when we write filter 'routine_args.with_defs is not null' in tap_funky view.
+	Handling 'undefined_object' does not work
+	*/
+    return pg_catalog.pg_get_function_arguments((_routine_signature::regprocedure)::oid);
+exception when others then
+	return null;
+end;
+$$ language plpgsql stable;
+
+create or replace view tap_funky_ext as
+select
+	tf.oid,
+	tf.schema,
+	tf.name,
+	tf.owner,
+	tf.args,
+	lower(coalesce(
+		routine_info."returns",
+		tf."returns"))                       AS "returns",
+	tf.langoid,
+	tf.is_strict,
+	tf.kind,
+	tf.is_definer,
+	tf.returns_set,
+	tf.volatility,
+	tf.is_visible,
+	l.lanname                                AS langname,
+	format('(%s)',
+		routine_info.args_with_defs
+	)                                        AS args_with_defs
+from tap_funky tf
+join pg_catalog.pg_proc p on p.oid = tf.oid
+join pg_catalog.pg_namespace n ON p.pronamespace = n.oid
+left join pg_catalog.pg_language l ON l.oid = p.prolang
+left join lateral (
+	select
+		format('%1I.%2I', tf.schema, tf.name) as qualified
+) routine_name on true
+left join lateral (
+	select
+		case
+			when lower(tf.schema) != 'pg_catalog'
+				then _routineresult(concat(routine_name.qualified, '(', tf.args, ')'))
+			else null
+		end  collate "default" as "returns",
+		case
+			when lower(tf.schema) != 'pg_catalog'
+				then _routineargsdefs(concat(routine_name.qualified, '(', tf.args, ')'))
+			else null
+		end  collate "default" as "args_with_defs"
+) as routine_info on true;
+
+
 create function get_routine_signature(
 	_routine_schema name
 	, _routine_name name)
@@ -9,7 +85,7 @@ create function get_routine_signature(
 as $function$
 	select
 		"schema", "name", args_with_defs
-	from tap_funky
+	from tap_funky_ext
 	where
 		"schema" = _routine_schema and
 		"name" = _routine_name;
@@ -22,7 +98,7 @@ create function get_routine_signature(
 as $function$
 	select
 		"schema", "name", args_with_defs
-	from tap_funky
+	from tap_funky_ext
 	where
 		"name" = _routine_name;
 $function$;
@@ -52,14 +128,14 @@ begin
 	begin
 	    select "returns", langname, returns_set
 	    into strict _func_result_type, _func_language, _returns_set
-	    from tap_funky
+	    from tap_funky_ext
 	    where "schema" = _func_schema
 	        and "name" = _func_name
 	        and args_with_defs = _func_args;
 		exception when NO_DATA_FOUND or TOO_MANY_ROWS then
 			select string_agg(E'\t - ' || format('%I.%I %s', "schema", "name", args_with_defs), E'\n')::text
 			into _variants
-			from tap_funky
+			from tap_funky_ext
 			where "name" = _func_name;
 			_ex_msg = format('Routine %I.%I %s does not exist.',
 				_func_schema, _func_name, _func_args) || E'\n' || 'Possible variants are:' || E'\n' ||
@@ -231,7 +307,7 @@ begin
                 from
                     pg_catalog.pg_attribute t
                 where t.attrelid = (_table.table_schema || '.' || _table.table_name)::regclass
-                    and t.attnum > 0 and attnotnull
+                    and t.attnum > 0 and attnotnull and attidentity = '' /*'d' or 'a' means generated as identity*/
                     and (
                         (
                             --and the column is not part of PK when we want to leave PK as is
@@ -366,23 +442,9 @@ CREATE FUNCTION _get_func_oid(name, name, name[])
  LANGUAGE sql
 AS $function$
     SELECT oid
-      FROM tap_funky
+      FROM tap_funky_ext
      WHERE "schema" = $1
 	   and "name" = $2
        AND args = _funkargs($3)
        AND is_visible
-$function$
-;
-
-/*
-So it replaces the function in the same schema? I presume you're depending on a transaction ROLLBACK to rollback the mock function, yes?
-
-
-Seems like there are some conditions that are ignored here, yes? Should it raise an error for unsupported conditions, e.g., a set-returning C function.
-
-
-I don't understand what Beaver has to do with this. I have never used it, and it shouldn't be a requirement for users to have it.
-
-
-Why does this param support multiple tables but the rest refer to a single table?
-*/
+$function$;
