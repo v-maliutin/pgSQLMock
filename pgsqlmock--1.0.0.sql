@@ -1,7 +1,7 @@
 --complain if script is sourced in psql, rather than via CREATE EXTENSION
 \echo Use "CREATE EXTENSION pgsqlmock" to load this file. \quit
 
-create or replace function _routineresult ( _routine_signature text )
+create function _routineresult ( _routine_signature text )
 returns text as $$
 begin
 	/*
@@ -17,7 +17,7 @@ exception when others then
 end;
 $$ language plpgsql stable;
 
-create or replace function _routineargsdefs ( _routine_signature text )
+create function _routineargsdefs ( _routine_signature text )
 returns text as $$
 begin
 	/*
@@ -33,7 +33,7 @@ exception when others then
 end;
 $$ language plpgsql stable;
 
-create or replace view tap_funky_ext as
+create view tap_funky_ext as
 select
 	tf.oid,
 	tf.schema,
@@ -437,14 +437,14 @@ begin
 end;
 $function$;
 
-CREATE FUNCTION _get_func_oid(name, name, name[])
- RETURNS oid
- LANGUAGE sql
-AS $function$
-    SELECT oid
-      FROM tap_funky_ext
-     WHERE "schema" = $1
+create function _get_func_oid(name, name, name[])
+ returns oid
+ language sql
+as $function$
+    select oid
+      from tap_funky_ext
+     where "schema" = $1
 	   and "name" = $2
-       AND args = _funkargs($3)
-       AND is_visible
+       and args = _funkargs($3)
+       and is_visible
 $function$;
